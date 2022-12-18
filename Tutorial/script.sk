@@ -1,0 +1,447 @@
+options:
+    # The prefix of (almost) everything
+    prefix: <##cdfb13>ᴛ<##b2fb34>ᴜ<##96fc56>ᴛ<##7bfc77>ᴏ<##60fc99>ʀ<##45fcba>ɪ<##29fddc>ᴀ<##0efdfd>ʟ
+
+    # Colors to brighten up the text
+    color1: <##b2fb34>        # Main color
+    color2: <##45fcba>        # Secondary color
+    color3: &7                # A color for separation
+    color4: &8                # A color that is rarely used
+    color_error: <##f08067>   # This explains itself xd
+    color_success: <##96fc56>
+
+    # For convenience
+    dot: •
+
+    # The error and success prefixes
+    error: <##eb512f>ERROR
+    success: <##96fc56>SUCCESS
+
+on unload:
+    broadcast "{@prefix} &8{@dot} &7Unloading {@color1}%script%.sk&7!"
+    set {scripts::loading::%script%} to now
+
+on load:
+    add 1 to {scripts::version::%script%}
+    broadcast "{@prefix} &8{@dot} &7Loading {@color1}%script%.sk&7! &7(%difference between now and {scripts::loading::%script%} ? "0 seconds"%) &8(V%{scripts::version::%script%}/10%&8)"
+
+#----------------------------------( Commands )-----------------------------------#
+
+command /tutorial [<string>] [<string>] [<string>]:
+    trigger:
+        if player does not have permission "tutorial.main":
+            send "{@error} &8{@dot} {@color_error}You seem to be missing the required permission! &o&n(tutorial.main)"
+            stop
+        if arg 1 is "create", "add", "c" or "a":
+            set {_id} to arg 2
+            if {_id} is not set:
+                send "{@error} &8{@dot} {@color_error}Incorrect usage! &o&n(/tutorial %arg 1% (name))"
+                stop
+            replace all " -> Is Available" and " -> Already Exists" with "" in {_id}
+            if {tutorials::created_tutorials::%{_id}%} is set:
+                send "{@error} &8{@dot} {@color_error}Invalid input! &o&n(ID already exists)"
+                stop
+            set {tutorials::created_tutorials::%{_id}%} to {_id}
+            set {tutorials::created_tutorials::%{_id}%::creator} to player
+            send "{@success} &8{@dot} {@color3}You have successfully {@color2}created {@color3}a new tutorial {@color1}&o&n(%{_id}%)"
+            stop
+        if arg 1 is "list":
+            set {_id} to arg 2
+            if {_id} is set:
+                if {tutorials::created_tutorials::%{_id}%} isn't set:
+                    send "{@error} &8{@dot} {@color_error}Invalid input! &o&n(ID doesn't exist)"
+                    stop
+                send "{@prefix} &8{@dot} {@color3}Created Points of {@color1}%{_id}%:"
+                loop {tutorials::created_tutorials::%{_id}%::created_points::*}:
+                    add 1 to {_size}
+                    set {_x} to Tutorials_FormatInt(x-coord of loop-value) # get a integer instead of a number
+                    set {_y} to Tutorials_FormatInt(y-coord of loop-value)
+                    set {_z} to Tutorials_FormatInt(z-coord of loop-value)
+                    send formatted "<tooltip:{@color3}Click me to {@color1}teleport {@color3}to the location><cmd:/tutorial tp %{_x}% %{_y}% %{_z}%>{@color3}##%{_size}%: {@color1}Loc: %{_x}%{@color3}, {@color1}%{_y}%{@color3}, {@color1}%{_z}%"
+                stop
+            send "{@prefix} &8{@dot} {@color3}Created Tutorials:"
+            loop {tutorials::created_tutorials::*}:
+                send formatted "<tooltip:{@color3}Click me to {@color1}edit {@color3}this tutorial><cmd:/tutorial edit %loop-value%>&8{@dot} {@color1}%loop-value% {@color3}-> {@color2}%{tutorials::created_tutorials::%loop-value%::creator} ? "N/A"%"
+            stop
+        if arg 1 is "edit" or "editor" or "e":
+            set {_id} to arg 2
+            if {_id} is not set:
+                send "{@error} &8{@dot} {@color_error}Incorrect usage! &o&n(/tutorial %arg 1% (name))"
+                stop
+            if {tutorials::created_tutorials::%{_id}%} isn't set:
+                send "{@error} &8{@dot} {@color_error}Invalid input! &o&n(ID doesn't exist)"
+                stop
+            if {tutorials::saved_data::%uuid of player%::current_edit} is set:
+                send "<sgt:/tutorial stop_edit><tooltip:{@color3}Click me to {@color_error}stop {@color3}editing!>{@error} &8{@dot} {@color_error}Invalid entry! &o&n(You're already editing '%{tutorials::saved_data::%uuid of player%::current_edit}%')"
+                stop
+            Tutorials_SaveInventory(player)
+            set {tutorials::saved_data::%uuid of player%::current_edit} to {_id}
+            set slot 0 of player's inventory to bamboo named "{@color1}Location Creator" with lore "&7Right click me to create a location!"
+            set slot 1 of player's inventory to redstone named "{@color2}Location Remover" with lore "&7Right click me to delete the last location!"
+            set slot 8 of player's inventory to barrier named "{@color_error}Exit" with lore "&7Right click me to exit the edit menu!"
+            stop
+        if arg 1 is "stop_edit":
+            if {tutorials::saved_data::%uuid of player%::current_edit} isn't set:
+                send "{@error} &8{@dot} {@color_error}Invalid entry! &o&n(You're not editing anything)"
+                stop
+            Tutorials_RestoreInventory(player)
+            send "{@success} &8{@dot} {@color3}You have stopped {@color2}editing {@color3}%{tutorials::saved_data::%uuid of player%::current_edit}%!"
+            delete {tutorials::saved_data::%uuid of player%::current_edit}
+            stop
+        if arg 1 is "settings" or "s":
+            set {_id} to arg 2
+            if {_id} is not set:
+                send "{@error} &8{@dot} {@color_error}Incorrect usage! &o&n(/tutorial %arg 1% (name))"
+                stop
+            if {tutorials::created_tutorials::%{_id}%} isn't set:
+                send "{@error} &8{@dot} {@color_error}Invalid input! &o&n(ID doesn't exist)"
+                stop
+            Tutorials_OpenSettingsGUI(player, {_id})
+            stop
+        if arg 1 is "start":
+            set {_id} to arg 2
+            if {_id} is not set:
+                send "{@error} &8{@dot} {@color_error}Incorrect usage! &o&n(/tutorial %arg 1% (name))"
+                stop
+            if {tutorials::created_tutorials::%{_id}%} isn't set:
+                send "{@error} &8{@dot} {@color_error}Invalid input! &o&n(ID doesn't exist)"
+                stop
+            set {_p} to player
+            if arg 3 is set:
+                if arg 3 parsed as player isn't set:
+                    send "{@error} &8{@dot} {@color_error}Invalid input! &o&n(%arg 3% is not online)"
+                    stop
+                set {_p} to arg 3 parsed as player
+            Tutorials_DoMovement({_p}, {_id})
+            stop
+        if arg 1 is "delete":
+            set {_id} to arg 2
+            if {_id} is not set:
+                send "{@error} &8{@dot} {@color_error}Incorrect usage! &o&n(/tutorial %arg 1% (name))"
+                stop
+            if {tutorials::created_tutorials::%{_id}%} isn't set:
+                send "{@error} &8{@dot} {@color_error}Invalid input! &o&n(ID doesn't exist)"
+                stop
+            delete {tutorials::created_tutorials::%{_id}%::*}
+            delete {tutorials::created_tutorials::%{_id}%}
+            send "{@success} &8{@dot} {@color_success}Deleted %{_id}%!"
+            stop
+        send ""
+        send "{@color3}-----------------------({@color2} Info {@color3})-----------------------"
+        send ""
+        send "&8{@dot} {@color1}/tutorial (create/c/add/a) (name) {@color4}| {@color3}Create a tutorial!"
+        send "&8{@dot} {@color1}/tutorial (delete/d) (name) {@color4}| {@color3}Delete a tutorial!"
+        send "&8{@dot} {@color1}/tutorial (list/l) [name] {@color4}| {@color3}Get all the tutorials or the created points!"
+        send "&8{@dot} {@color1}/tutorial (edit[or]/e) (name) {@color4}| {@color3}Go into the edit mode for a tutorial!"
+        send "&8{@dot} {@color1}/tutorial (settings/s) (name) {@color4}| {@color3}Change some settings for a tutorial!"
+        send "&8{@dot} {@color1}/tutorial (start) (name) [player] {@color4}| {@color3}Start the tutorial!"
+        send ""
+        send "{@color4}() is mandatory, [] is optional, (x/y) means one of those is valid"
+        send ""
+        send "{@color3}-----------------------({@color2} Info {@color3})-----------------------"
+        send ""
+ 
+#--------------------------------( Commands End )---------------------------------#
+
+#-----------------------------------( Events )------------------------------------#
+
+on tab complete of "/tutorial":
+    set tab completions for position 1 to "create", "add", "delete", "edit", "editor", "settings", "list" and "start"
+    if tab arg 1 is "delete", "d", "list", "l", "edit", "editor", "e", "settings", "s" or "start":
+        set tab completions for position 2 to {tutorials::created_tutorials::*}
+    if tab arg 1 is "create", "c", "add" or "a":
+        tab arg 2 is set
+        if {tutorials::created_tutorials::%tab arg 2%} is set:
+            set tab completions for position 2 to "%tab arg 2% -> Already Exists"
+        else:
+            set tab completions for position 2 to "%tab arg 2% -> Is Available"
+    if tab arg 1 is "start":
+        set tab completions for position 3 to all players
+
+on inventory click:
+    {tutorials::saved_data::%uuid of player%::current_edit} is set
+    cancel event
+
+on right click with barrier:
+    {tutorials::saved_data::%uuid of player%::current_edit} is set
+    player's tool is barrier named "{@color_error}Exit"
+    delete {tutorials::saved_data::%uuid of player%::current_edit}
+    Tutorials_RestoreInventory(player)
+
+on right click with bamboo:
+    {tutorials::saved_data::%uuid of player%::current_edit} is set
+    player's tool is bamboo named "{@color1}Location Creator"
+    set {_id} to {tutorials::saved_data::%uuid of player%::current_edit}
+    set {_size} to size of {tutorials::created_tutorials::%{_id}%::created_points::*}
+    add 1 to {_size}
+    set {tutorials::created_tutorials::%{_id}%::created_points::%{_size}%} to location of player
+    send "{@success} &8{@dot} {@color3}You have successfully {@color_success}added {@color3}a point! {@color1}&o&n(##%{_size}%)"
+
+on right click with redstone:
+    {tutorials::saved_data::%uuid of player%::current_edit} is set
+    player's tool is redstone named "{@color2}Location Remover"
+    set {_id} to {tutorials::saved_data::%uuid of player%::current_edit}
+    set {_size} to size of {tutorials::created_tutorials::%{_id}%::created_points::*}
+    delete {tutorials::created_tutorials::%{_id}%::created_points::%{_size}%::*}
+    delete {tutorials::created_tutorials::%{_id}%::created_points::%{_size}%}
+    send "{@success} &8{@dot} {@color3}You have successfully {@color_error}removed {@color3}a point! {@color1}&o&n(##%{_size}%)"
+
+on break:
+    {tutorials::saved_data::%uuid of player%::current_edit} is set
+    cancel event
+
+on place:
+    {tutorials::saved_data::%uuid of player%::current_edit} is set
+    cancel event
+
+on join:
+    {tutorials::saved_data::%uuid of player%::current_edit} is set
+    Tutorials_RestoreInventory(player)
+
+#---------------------------------( Events End )----------------------------------#
+
+#----------------------------------( Functions )----------------------------------#
+
+function Tutorials_OpenSettingsGUI(plr: player, tut: string, page: number = 1):
+    set {_page} to round {_page}
+    set {_old_page} to {_page} - 1
+    set {_new_page} to {_page} + 1
+    set {_start} to ({_page} * 21) - 20
+    set {_uuid} to uuid of {_plr}
+    create gui with virtual chest inventory named "{@color1}Locations for %{_tut}%" with 5 rows:
+        make gui slot (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 17, 18, 26, 27, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44) with black stained glass pane named " "
+        if {_page} >= 2:
+            make gui slot 38 with arrow named "{@color1}ᴘʀᴇᴠɪᴏᴜꜱ ᴘᴀɢᴇ":
+                Tutorials_OpenSettingsGUI({_plr}, {_tut}, {_old_page})
+        if (size of {tutorials::created_tutorials::%{_tut}%::created_points::*}) - 20 > {_start}:
+            make gui slot 42 with arrow named "{@color1}ɴᴇxᴛ ᴘᴀɢᴇ":
+                Tutorials_OpenSettingsGUI({_plr}, {_tut}, {_new_page})
+        
+        set {_loops} to 0
+        set {_slot} to 10
+        loop {tutorials::created_tutorials::%{_tut}%::created_points::*}:
+            add 1 to {_loops}
+            if {_loops} >= {_start}:
+                if {_slot} = 17 or 26:
+                    add 2 to {_slot}
+                make gui slot {_slot} with oak sign named "{@color2}Location ##%{_loops}%" with lore "{@color3}Click me to change settings for this location!":
+                    Tutorials_OpenSettingsTutGUI({_plr}, {_tut}, {_loops})
+                add 1 to {_slot}
+                if {_slot} >= 35:
+                    exit loop
+    open last gui to {_plr}
+
+function Tutorials_OpenSettingsTutGUI(plr: player, tut: string, index: number):
+    create gui with virtual chest inventory named "{@color1}Settings for %{_tut}%" with 4 rows:
+        make gui slot (integers between 0 and 40) with black stained glass pane named " "
+        make gui slot 27 with barrier named "{@color_error}ɢᴏ ʙᴀᴄᴋ":
+            Tutorials_OpenSettingsGUI({_plr}, {_tut})
+        set {_speed} to {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::wait} ? 1
+        make gui slot 10 with {_speed} of feather named "{@color2}Speed {@color4}[%{_speed}% seconds]" with lore "{@color3}Click me to change the speed!":
+            set {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::wait} to 1 if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::wait} isn't set
+            set {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::wait} to {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::wait} * 2
+            if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::wait} > 64:
+                set {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::wait} to 1
+            Tutorials_OpenSettingsTutGUI({_plr}, {_tut}, {_index})
+        set {_item} to red stained glass pane named "{@color_success}Enable Sounds" if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::sound} isn't set
+        set {_item} to lime stained glass pane named "{@color_error}Disable Sounds" if {_item} isn't set
+        make gui slot 13 with {_item} with lore "{@color3}Click me toggle sounds!":
+            
+            if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::sound} isn't set:
+                set {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::sound} to "block.amethyst_cluster.hit" 
+            else:
+                delete {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::sound}
+            Tutorials_OpenSettingsTutGUI({_plr}, {_tut}, {_index})
+        if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::sound} is set:
+            make gui slot 22 with note block named "{@color2}Change Sound {@color4}[%{tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::sound}%]" with lore "{@color3}Click me to change the sound!":
+                set {tutorials::saved_data::%uuid of {_plr}%::sound_input} to {_index}
+                set {tutorials::saved_data::%uuid of {_plr}%::sound_tut} to {_tut}
+                send "{@prefix} {@color4}{@dot} {@color3}Please send {@color2}the sound{@color3} in chat that you would like to use!" to {_plr}
+                close {_plr}'s inventory
+        delete {_item}
+        set {_item} to red stained glass pane named "{@color_success}Enable Message" if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message} isn't set
+        set {_item} to lime stained glass pane named "{@color_error}Disable Message" if {_item} isn't set
+        make gui slot 15 with {_item} with lore "{@color3}Click me toggle messages!":
+            if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message} isn't set:
+                set {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message} to "Hi there :D" 
+            else:
+                delete {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message}
+            Tutorials_OpenSettingsTutGUI({_plr}, {_tut}, {_index})
+        if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message} is set:
+            make gui slot 16 with anvil named "{@color2}Change Type {@color4}[%colored {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message_type} ? "Message"%&8]" with lore "{@color3}Click me to change the message type!":
+                if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message_type} is set:
+                    delete {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message_type}
+                else:
+                    set {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message_type} to "Title"
+                Tutorials_OpenSettingsTutGUI({_plr}, {_tut}, {_index})
+            if {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message_type} is "title":
+                make gui slot 24 with chest named "{@color2}Change Title {@color4}[%colored {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::title} ? "Not set"%&8]" with lore "{@color3}Click me to change the title!":
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_input} to {_index}
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_tut} to {_tut}
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_type} to "title"
+                    send "{@prefix} {@color4}{@dot} {@color3}Please send {@color2}the title{@color3} in chat that you would like to use!" to {_plr}
+                    close {_plr}'s inventory
+                make gui slot 25 with ender chest named "{@color2}Change Subtitle {@color4}[%colored {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::subtitle} ? "Not set"%&8]" with lore "{@color3}Click me to change the subtitle!":
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_input} to {_index}
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_tut} to {_tut}
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_type} to "subtitle"
+                    send "{@prefix} {@color4}{@dot} {@color3}Please send {@color2}the subtitle{@color3} in chat that you would like to use!" to {_plr}
+                    close {_plr}'s inventory
+            else:
+                make gui slot 24 with chest named "{@color2}Change Message {@color4}[%colored {tutorials::created_tutorials::%{_tut}%::created_points::%{_index}%::message} ? "Not set"%&8]" with lore "{@color3}Click me to change the message!":
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_input} to {_index}
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_tut} to {_tut}
+                    set {tutorials::saved_data::%uuid of {_plr}%::message_type} to "message"
+                    send "{@prefix} {@color4}{@dot} {@color3}Please send {@color2}the message{@color3} in chat that you would like to use!" to {_plr}
+                    close {_plr}'s inventory
+    open last gui to {_plr}
+
+on chat:
+    if {tutorials::saved_data::%uuid of player%::sound_input} is set:
+        set {tutorials::created_tutorials::%{tutorials::saved_data::%uuid of player%::sound_tut}%::created_points::%{tutorials::saved_data::%uuid of player%::sound_input}%::sound} to message
+        cancel event
+        Tutorials_OpenSettingsTutGUI(player, {tutorials::saved_data::%uuid of player%::sound_tut}, {tutorials::saved_data::%uuid of player%::sound_input})
+        delete {tutorials::saved_data::%uuid of player%::sound_input} and {tutorials::saved_data::%uuid of player%::sound_tut}
+        play sound message to player
+        stop
+    if {tutorials::saved_data::%uuid of player%::message_input} is set:
+        set {tutorials::created_tutorials::%{tutorials::saved_data::%uuid of player%::message_tut}%::created_points::%{tutorials::saved_data::%uuid of player%::message_input}%::%{tutorials::saved_data::%uuid of player%::message_type}%} to message
+        Tutorials_OpenSettingsTutGUI(player, {tutorials::saved_data::%uuid of player%::message_tut}, {tutorials::saved_data::%uuid of player%::message_input})
+        delete {tutorials::saved_data::%uuid of player%::message_input} and {tutorials::saved_data::%uuid of player%::message_tut} and {tutorials::saved_data::%uuid of player%::message_type}
+        cancel event
+
+function Tutorials_RestoreInventory(plr: player):
+    clear {_plr}'s inventory
+    set {_slot} to -1
+    loop {tutorials::saved_data::%uuid of {_plr}%::items::*}:
+        add 1 to {_slot}
+        set slot {_slot} of {_plr}'s inventory to loop-value
+
+function Tutorials_SaveInventory(plr: player):
+    set {_slot} to -1
+    loop (9 * 4 + 4) times:
+        add 1 to {_slot}
+        set {_items::%{_slot}%} to slot {_slot} of {_plr}'s inventory ? air
+    set {tutorials::saved_data::%uuid of {_plr}%::items::*} to {_items::*}
+    clear {_plr}'s inventory
+
+function Tutorials_FormatInt(number: num) :: integer:
+    set {_s} to "%{_number}%"
+    set {_split::*} to {_s} split at "."
+    return {_split::1} parsed as an integer
+
+function Tutorials_DoMovement(p: player, tut: string):
+    set {_points::*} to {tutorials::created_tutorials::%{_tut}%::created_points::*}
+    loop size of {_points::*} times:
+        set {_started} to now
+        if {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::message} is set:
+            if {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::message_type} is "title":
+                send title colored {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::title} with subtitle colored {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::subtitle} to {_p}
+            else:
+                send colored {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::message} to {_p}
+        if {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::sound} is set:
+            play sound {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::sound} to {_p}
+        set {_wait} to {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value%::wait} ? 1
+        set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+        while difference between now and {_started} <= {_wait}:
+            teleport {_p} to {tutorials::created_tutorials::%{_tut}%::created_points::%loop-value-1%}
+            wait 3 ticks
+
+# It just decided to not work anymore so I have just commented it out if you'd like to see it.
+
+# function Tutorials_RenderMovement(tut: string):
+#     send "{@prefix} &8{@dot} {@color2}%{_tut}% {@color3}has started rendering" to all players where [input has permission "tutorials.command"]
+#     set {_locs::*} to {tutorials::created_tutorials::%{_tut}%::created_points::*}
+#     # set {_last} to {_locs::%size of {_locs::*}%}
+#     # loop 3 times:
+#     #     add {_last} to {_locs::*}
+#     delete {tutorials::created_tutorials::%{_tut}%::rendered_points::*}
+#     set {_amount} to 1000
+
+#     set {_loops} to 0 
+#     set {_divided} to 1 / {_amount}
+
+#     set {_frames} to (size of {_locs::*} - 3) * ({_amount} + 1)
+
+#     loop {_locs::*}:
+#         add 1 to {_i}
+#         if {_locs::%{_i} + 3%} is not set:
+#             exit loop
+#         set {_1} to {_locs::%{_i}%}
+#         set {_2} to {_locs::%{_i} + 1%}
+#         set {_3} to {_locs::%{_i} + 2%}
+#         set {_4} to {_locs::%{_i} + 3%}
+#         loop ({_amount} + 1) times:
+#             set {_extra} to ({_i}-1)*{_divided}*loop-value-2
+#             broadcast "Extra: %{_extra}%"
+#             broadcast "I: %{_i}% Divided: %{_divided}% Loop-value-2: %loop-value-2%"
+#             add 1 to {_loops}
+#             broadcast "%{_1}% %{_2}% %{_3}% %{_4}%"
+#             set {_loc} to Tutorials_CurveLocations({_1}, {_2}, {_3}, {_4}, {_extra})
+#             add {_loc} to {_locations::*}
+#             if mod({_loops}, {@render_speed}) = 0:
+#                 wait 1 ticks
+#             if mod({_loops}, ({_frames}/100)) <= 20:
+#                 send action bar "{@color1}Progress &8{@dot} {@color3}%{_loops} / {_frames} * 100%%%" to all players where [input has permission "tutorials.command"]
+                
+#     loop {_locations::*}:
+#         set {_l} to loop-value
+#         set yaw of {_locations::%loop-index%} to yaw of (vector from {_l} to {_locations::%2 + {_index}%})
+#         set pitch of {_locations::%loop-index%} to pitch of (vector from loop-value to {_locations::%2 + {_index}%})
+#         add 1 to {_index}
+    
+#     send "{@prefix} &8{@dot} {@color2}%{_tut}% {@color3}is now saving its variables" to all players where [input has permission "tutorials.command"]
+#     # Batch updating to avoid '[Skript] Cannot write variables to the database 'default' at sufficient speed; server performance may suffer and many variables will be lost if the server crashes. (this warning will be repeated at most once every 10 seconds)'
+#     # set {_am} to size of {_locations::*}/100 # 2002/100 = 20.02
+#     # set {_index} to -1
+#     # set {_now} to now
+#     # loop 100 times:
+#     #     add 1 to {_index}
+#     #     delete {_list::*}
+#     #     set {_start} to Tutorials_FormatInt(({_index} * {_am}))
+#     #     loop {_am} times:
+#     #         add {_locations::%loop-value-2 + {_start}%} to {_list::*}
+#     #     add {_list::*} to {tutorials::created_tutorials::%{_tut}%::rendered_points::*}
+#     #     set {_distance} to difference between 20 seconds and (difference between now and {_now})
+#     #     send action bar "{@color1}Progress &8{@dot} {@color3}%{_distance}%" to all players where [input has permission "tutorials.command"]
+#     #     wait 0.25 second
+#     set {tutorials::created_tutorials::%{_tut}%::rendered_points::*} to {_locations::*}
+#     send action bar "{@color1}Progress &8{@dot} {@color3}now" to all players where [input has permission "tutorials.command"]
+#     send "{@prefix} &8{@dot} {@color2}%{_tut}% {@color3}has finished rendering" to all players where [input has permission "tutorials.command"]
+
+# https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline and https://mortoray.com/smoothing-3d-geometry-like-a-tunnel-with-catmull-rom-splines/
+# function Tutorials_CurveLocations(1: location, 2: location, 3: location, 4: location, extra: num) :: location:
+#     loop 4 times:
+#         set {_x::%loop-value%} to Tutorials_FormatInt(x-coord of {_%loop-value%})
+#         set {_y::%loop-value%} to Tutorials_FormatInt(y-coord of {_%loop-value%})
+#         set {_z::%loop-value%} to Tutorials_FormatInt(z-coord of {_%loop-value%})
+#         set {_val} to "%world of {_%loop-value%}%"
+#         set {_worlds::%{_val}%} to {_val}
+#     loop {_worlds::*}:
+#         set {_test::%loop-value%} to loop-value
+#     if size of {_worlds::*} > 1:
+#         send "{@error} &8{@dot} {@color_error}The worlds of the points must be the same!" to all players where [input has permission "tutorials.command"]
+#         stop
+#     set {_x} to Tutorials_SplineNum({_x::1}, {_x::2}, {_x::3}, {_x::4}, {_extra})
+#     set {_y} to Tutorials_SplineNum({_y::1}, {_y::2}, {_y::3}, {_y::4}, {_extra})
+#     set {_z} to Tutorials_SplineNum({_z::1}, {_z::2}, {_z::3}, {_z::4}, {_extra})
+#     return location({_x}, {_y}, {_z}, world({_val}))
+
+# function Tutorials_SplineNum(p0: number, p1: number, p2: number, p3: number, extra: num = 0) :: number:
+#     set {_1} to (2 * {_p1})
+#     set {_2} to ({_p0} *-1 + {_p2}) * {_extra}
+#     set {_3} to (2 * {_p0} - 5 * {_p1} + 4 * {_p2} - {_p3}) * ({_extra}^2)
+#     set {_4} to ({_p0} *-1 + 3 * {_p1} - 3 * {_p2} + {_p3}) * ({_extra}^3)
+#     return ( {_1} + {_2} + {_3} + {_4} )/2
+    
+
+# float4 CatmullRomParams( double p0, double p1, double p2, double p3 ) {
+#     return 0.5f * float4(
+#         (float)(2*p1),
+#         (float)(-p0 + p2),
+#         (float)(2*p0 - 5*p1 + 4*p2 - p3),
+#         (float)(-p0 + 3*p1 - 3*p2 + p3) 
+#     );
+# }
+
+#--------------------------------( Functions End )--------------------------------#
