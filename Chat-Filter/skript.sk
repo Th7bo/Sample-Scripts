@@ -1,0 +1,43 @@
+import:
+    java.util.regex.Matcher
+    java.util.regex.Pattern
+    java.lang.StringBuffer
+
+function convertWordToRegexString(word: string) :: string:
+    set {_word} to {_word}.replace("/[.*+\-?^${}()|[\]\\]/g", "\\$&")
+    return {_word}
+
+on load:
+    set {_words::*} to "test|okay" split at "|" # swear words here split with a "|"
+    set {_base} to "\b("
+    set {_end} to ")\b"
+    set {_l33t::a} to "4|@"
+    set {_l33t::e} to "3"
+    set {_l33t::i} to "1|!"
+    set {_l33t::o} to "0"
+    loop {_words::*}:
+        add 1 to {_index}
+        set {_split::*} to loop-value split at ""
+        delete {_split::%size of {_split::*}%}
+        loop {_split::*}:
+            if {_l33t::%loop-value-2%} is set:
+                set {_wording} to "%{_wording} ? ""%[%loop-value-2%%{_l33t::%loop-value-2%}%]+"
+            else:
+                set {_wording} to "%{_wording} ? ""%%loop-value-2%"
+        set {_wording} to "%{_wording} ? ""%|" if {_index} isn't size of {_words::*}
+    set {regex} to Pattern.compile("%{_base}%%{_wording} ? ""%%{_end}%")
+
+on chat:
+    event isn't cancelled
+    set {_msg} to message
+    set {_old} to "%uncolored message%"
+    set {_matcher} to {regex}.matcher(uncolored message)
+    set {_buffer} to new StringBuffer()
+    while {_matcher}.find() is true:
+        set {_yes} to true
+        {_matcher}.appendReplacement({_buffer}, "*".repeat({_matcher}.group(1).length()))
+    set {_msg} to {_matcher}.appendTail({_buffer}).toString()
+    if {_yes} is true:
+        cancel event
+        send "<##50B87E>✉ %player% &fsaid <##18BF9E>%{_old}%" to all players where [input has permission "staff.chat"]
+    set chat format to "%player%&f: %{_msg}%"
