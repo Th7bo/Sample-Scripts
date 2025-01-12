@@ -24,6 +24,7 @@ on load:
                 set {_wording} to "%{_wording} ? ""%[%loop-value-2%%{_l33t::%loop-value-2%}%]+"
             else:
                 set {_wording} to "%{_wording} ? ""%%loop-value-2%"
+            set {_wording} to "%{_wording} ? ""%\s*"
         set {_wording} to "%{_wording} ? ""%|" if {_index} isn't size of {_words::*}
     set {regex} to Pattern.compile("%{_base}%%{_wording} ? ""%%{_end}%")
 
