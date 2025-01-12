@@ -32,7 +32,7 @@ on chat:
     event isn't cancelled
     set {_msg} to message
     set {_old} to "%uncolored message%"
-    set {_matcher} to {regex}.matcher(uncolored message)
+    set {_matcher} to {regex}.matcher(uncolored message in lowercase)
     set {_buffer} to new StringBuffer()
     while {_matcher}.find() is true:
         set {_yes} to true
